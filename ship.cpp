@@ -85,6 +85,32 @@ struct Laser
         power = pow;
     }
 };
+struct Invader
+{
+    int timeToLaser;
+    int hp;
+    int exp;
+    Invader()
+    {
+        timeToLaser = 0;
+        hp = 0;
+        exp = 0;
+    }
+    Invader(int time, int helth, int point)
+    {
+        timeToLaser = time;
+        hp = helth;
+        exp = point;
+    }
+};
+struct Wave
+{
+    Point pos;
+    int speed;
+    int version;
+    int NumberEachColumn[8];
+    Invader enemy[4][8];
+};
 
 void filllasers(int *laser);
 
@@ -99,9 +125,12 @@ void createNewLaser(Laser *&lasers, int &laserIndex, int &maxCount, Laser create
 void lasersClosion(Laser *&enemy, Laser *&playerSide, int *&enemyRow, int *&playerRow);
 void showlasers(Laser &lasers, bool firsttime);
 
-// void showlasers(Laser &lasers, bool firsttime,bool islast); // last one colors turn red
-// to do: colorize func & create enemy ships from the plan & add the red ship from amirhossein
-
+// to do: create enemy ships from the plan & add the red ship from amirhossein
+// enemy
+void enemyInit(Wave &invaders, int model);
+void moveWave(Wave &invaders);
+void checkForFireLasers(Wave &invaders, int framesCount, Laser *&lasers, int &laserIndex, int &maxCount, int *laserPos);
+void printWave(Wave &enemy, bool show, int &leftest);
 // colorize
 void colorize(int input, bool resetcolor);
 
@@ -134,16 +163,24 @@ void mainGame()
     system("cls");
     Stopwatch sw;
     Ship our;
+    Wave enemy;
+
     our.position = Point(boardSize.x / 2, boardSize.y);
     int enemylaserscount = 0, playerlaserscount = 0, eli = 1, pli = 1;
+    int enemyWaveModel = 0; // enemywave model
     int enemyLaserlast[boardSize.x];
     int playerLaserlast[boardSize.x];
     int *enemyLaserlane = enemyLaserlast, *playerLaserlane = playerLaserlast;
-    int space = 0;
+    int space = 0; // the number of lasers form the keyboard input
+    int countFrame = 0;
+
+    enemyInit(enemy, enemyWaveModel);
     filllasers(enemyLaserlane);
     filllasers(playerLaserlane);
     Laser *playerlasers = new Laser[pli];
-    // Laser *enemylasers = new Laser[eli-1];
+    Laser *enemylasers = new Laser[eli];
+
+    // player powers
     int cycle = 1, playerlaserpower = 10, playerlaserspeed = -1;
 
     while (true)
@@ -155,11 +192,13 @@ void mainGame()
         }
 
         keyboardInput(our, cycle, space);
+
         // todo:  print , exp , health bar , time ...
+        moveWave(enemy);
+        checkForFireLasers(enemy, countFrame % 70, enemylasers, enemylaserscount, eli, enemyLaserlane);
 
         moveLasers(playerlasers, playerlaserscount, playerLaserlane, false); // mvoe lasers each frame
-        // moveLasers(enemylasers, enemylaserscount, enemyLaserlane, true);
-        //
+        moveLasers(enemylasers, enemylaserscount, enemyLaserlane, true);
 
         if (space >= 1) // if space clicked in the func -> create new laser for player
         {
@@ -184,6 +223,7 @@ void mainGame()
         // changecurser(Point(0, 1));
         // cout << cycle;
         // cycle++;
+        countFrame++;
     }
 }
 
@@ -280,7 +320,7 @@ void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy)
         showlasers(lasers[i], true);
         lasers[i].pos.y += lasers[i].speed;
 
-        if (lasers[i].pos.y <= 0)
+        if (lasers[i].pos.y <= 0 || lasers[i].pos.y > boardSize.y)
         {
             lasers[i].power = 0;
             lasers[i].pos.y = 0;
@@ -404,5 +444,106 @@ void colorize(int input, bool resetcolor)
     {
         break;
     }
+    }
+}
+
+// enemy
+void enemyInit(Wave &invaders, int model)
+{
+    srand(static_cast<unsigned int>(time(nullptr)));
+    int time = 70 - (4 * model);
+    Invader bot = Invader();
+    invaders.version = model;
+    invaders.pos = Point(0, 0);
+    invaders.speed = 1 + model;
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            invaders.NumberEachColumn[j] = i + 1;
+            invaders.enemy[i][j].timeToLaser = rand() % (time) + 0;
+            invaders.enemy[i][j].hp = 10 * (model + (4 - i));
+            invaders.enemy[i][j].exp = 10 * (model + (4 - i));
+        }
+    }
+}
+void moveWave(Wave &invaders)
+{
+
+    int rightest = 0, leftest = 7;
+    bool dontcheckright = false, dontcheckleft = false;
+    for (int i = 0; i < 8; i++)
+    {
+        if (invaders.NumberEachColumn[i] == 0 && !dontcheckleft)
+            rightest++;
+        else
+            dontcheckleft = true;
+        if (invaders.NumberEachColumn[7 - i] == 0 && !dontcheckright)
+            leftest--;
+        else
+            dontcheckright = true;
+    }
+    for(int i=0;i<8;i++)
+    {
+        cout << invaders.NumberEachColumn[i] << "  ";
+    }
+    exit(1);
+    printWave(invaders, false, leftest);
+
+    if (invaders.speed > 0)
+    {
+        if (invaders.pos.x + leftest + invaders.speed < boardSize.x) // if there is a space between each enemy space in every line this line should change
+            invaders.pos.x += invaders.speed;
+        else
+        {
+            invaders.pos.x = boardSize.x - leftest;
+            invaders.speed *= -1;
+            invaders.pos.y++;
+        }
+    }
+    else
+    {
+        if (invaders.pos.x + rightest + invaders.speed >= 0) // if there is a space between each enemy space in every line this line should change
+            invaders.pos.x += invaders.speed;
+        else
+        {
+            invaders.pos.x = -rightest;
+            invaders.speed *= -1;
+            invaders.pos.y++;
+        }
+    }
+    printWave(invaders, true, leftest);
+}
+void checkForFireLasers(Wave &invaders, int framesCount, Laser *&lasers, int &laserIndex, int &maxCount, int *laserPos)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            if (invaders.enemy[i][j].timeToLaser == framesCount)
+            {
+                Laser crate = Laser(Point(j + invaders.pos.x, i + invaders.pos.y + 1), (invaders.version + 1), (4 - i) * 10);
+                createNewLaser(lasers, laserIndex, maxCount, crate, laserPos);
+            }
+        }
+    }
+}
+void printWave(Wave &enemy, bool show, int &leftest)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        changecurser(Point(enemy.pos.x + leftest, enemy.pos.y + i));
+        for (int j = 0; j < 8; j++)
+        {
+            if (show)
+                if (enemy.enemy[i][j].hp != 0)
+                {
+                    cout << "o";
+                }
+                else
+                    cout << " ";
+            else
+                cout << " ";
+        }
     }
 }
