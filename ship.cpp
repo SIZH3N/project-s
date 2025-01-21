@@ -91,7 +91,7 @@ void filllasers(int *laser);
 void changecurser(Point position);
 void mainGame();
 bool endgame();
-void keyboardInput(Ship &our, int i, bool &space);
+void keyboardInput(Ship &our, int i, int &space);
 // lasers
 void newPlaceForLasers(Laser *&lasers, int &laserCount);
 void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy);
@@ -99,8 +99,11 @@ void createNewLaser(Laser *&lasers, int &laserIndex, int &maxCount, Laser create
 void lasersClosion(Laser *&enemy, Laser *&playerSide, int *&enemyRow, int *&playerRow);
 void showlasers(Laser &lasers, bool firsttime);
 
-//void showlasers(Laser &lasers, bool firsttime,bool islast); // last one colors turn red
-//to do: colorize func & create enemy ships from the plan & add the red ship from amirhossein 
+// void showlasers(Laser &lasers, bool firsttime,bool islast); // last one colors turn red
+// to do: colorize func & create enemy ships from the plan & add the red ship from amirhossein
+
+// colorize
+void colorize(int input, bool resetcolor);
 
 const double frameTime = 0.25;
 Point boardSize = Point(60, 40);
@@ -136,7 +139,7 @@ void mainGame()
     int enemyLaserlast[boardSize.x];
     int playerLaserlast[boardSize.x];
     int *enemyLaserlane = enemyLaserlast, *playerLaserlane = playerLaserlast;
-    bool space = false;
+    int space = 0;
     filllasers(enemyLaserlane);
     filllasers(playerLaserlane);
     Laser *playerlasers = new Laser[pli];
@@ -146,21 +149,26 @@ void mainGame()
     while (true)
     {
         sw.start();
-        // if (endgame())
-        // {
-        //     return;
-        // }
+        if (endgame())
+        {
+            return;
+        }
 
         keyboardInput(our, cycle, space);
-        // print , exp , health bar , time ...
+        // todo:  print , exp , health bar , time ...
 
         moveLasers(playerlasers, playerlaserscount, playerLaserlane, false); // mvoe lasers each frame
         // moveLasers(enemylasers, enemylaserscount, enemyLaserlane, true);
         //
 
-        if (space) // if space clicked in the func -> create new laser for player
+        if (space >= 1) // if space clicked in the func -> create new laser for player
         {
-            createNewLaser(playerlasers, playerlaserscount, pli, Laser(Point(our.position.x, our.position.y - 1), playerlaserspeed, playerlaserpower), playerLaserlane);
+            for (int i = -(space / 2); i <= space / 2; i++)
+            {
+                if (our.position.x + i >= 0 && our.position.x + i < boardSize.x)
+                    createNewLaser(playerlasers, playerlaserscount, pli, Laser(Point(our.position.x + i, our.position.y - 1 - ((space / 2) - abs(i))), playerlaserspeed, playerlaserpower), playerLaserlane);
+            }
+            // createNewLaser(playerlasers, playerlaserscount, pli, Laser(Point(our.position.x, our.position.y - 1), playerlaserspeed, playerlaserpower), playerLaserlane);
             space = false;
         }
         // lasersClosion(enemylasers, playerlasers, enemyLaserlane, playerLaserlane); // lasres colision each frame from the last lasers on each culomn
@@ -185,7 +193,7 @@ void filllasers(int *laser)
         laser[i] = -1;
 }
 
-void keyboardInput(Ship &our, int i, bool &space)
+void keyboardInput(Ship &our, int i, int &space)
 {
     changecurser(Point(our.position.x, our.position.y));
     if (!kbhit())
@@ -220,7 +228,12 @@ void keyboardInput(Ship &our, int i, bool &space)
         // createNewLaser()
         // changecurser(Point(0, 0));
         // cout << i;
-        space = true;
+        space = 1;
+        break;
+    }
+    case 'w':
+    {
+        space = 3;
         break;
     }
     default:
@@ -261,7 +274,7 @@ void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy)
     {
         if (lasers[i].power == 0)
         {
-           // showlasers(lasers[i], true);
+            // showlasers(lasers[i], true);
             continue;
         }
         showlasers(lasers[i], true);
@@ -270,7 +283,7 @@ void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy)
         if (lasers[i].pos.y <= 0)
         {
             lasers[i].power = 0;
-            lasers[i].pos.y=0;
+            lasers[i].pos.y = 0;
             laserPos[lasers[i].pos.x] = -1;
             continue;
         }
@@ -287,9 +300,16 @@ void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy)
             laserPos[lasers[i].pos.x] = i;
         }
 
-        
-        
-        showlasers(lasers[i], false);
+        if (laserPos[lasers[i].pos.x] == i)
+        {
+            colorize(2, false);
+            showlasers(lasers[i], false);
+            colorize(1, true);
+        }
+        else
+        {
+            showlasers(lasers[i], false);
+        }
     }
     return;
 }
@@ -355,4 +375,34 @@ void showlasers(Laser &lasers, bool firsttime)
 {
     changecurser(Point(lasers.pos.x, lasers.pos.y));
     cout << (firsttime ? " " : "|");
+}
+
+//
+// colorize
+void colorize(int input, bool resetcolor)
+{
+    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (resetcolor)
+    {
+        SetConsoleTextAttribute(h, 7);
+        return;
+    }
+    switch (input)
+    {
+    case 1:
+    {
+        SetConsoleTextAttribute(h, 7);
+
+        break;
+    }
+    case 2:
+    {
+        SetConsoleTextAttribute(h, 9);
+        break;
+    }
+    default:
+    {
+        break;
+    }
+    }
 }
