@@ -117,7 +117,7 @@ void filllasers(int *laser);
 void changecurser(Point position);
 void mainGame();
 bool endgame();
-void keyboardInput(Ship &our, int i, int &space);
+void keyboardInput(Ship &our, int i, int &space,int &playerspeed);
 // lasers
 void newPlaceForLasers(Laser *&lasers, int &laserCount);
 void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy);
@@ -181,7 +181,7 @@ void mainGame()
     Laser *enemylasers = new Laser[eli];
 
     // player powers
-    int cycle = 1, playerlaserpower = 10, playerlaserspeed = -1;
+    int cycle = 1, playerlaserpower = 10, playerlaserspeed = -1, playerspeed = 2;
 
     while (true)
     {
@@ -191,15 +191,15 @@ void mainGame()
             return;
         }
 
-        keyboardInput(our, cycle, space);
+        keyboardInput(our, cycle, space, playerspeed);
 
         // todo:  print , exp , health bar , time ...
-        moveWave(enemy);
-        checkForFireLasers(enemy, countFrame % 70, enemylasers, enemylaserscount, eli, enemyLaserlane);
 
+        checkForFireLasers(enemy, countFrame % 30, enemylasers, enemylaserscount, eli, enemyLaserlane);
+        lasersClosion(enemylasers, playerlasers, enemyLaserlane, playerLaserlane);
         moveLasers(playerlasers, playerlaserscount, playerLaserlane, false); // mvoe lasers each frame
         moveLasers(enemylasers, enemylaserscount, enemyLaserlane, true);
-
+        moveWave(enemy);
         if (space >= 1) // if space clicked in the func -> create new laser for player
         {
             for (int i = -(space / 2); i <= space / 2; i++)
@@ -233,7 +233,7 @@ void filllasers(int *laser)
         laser[i] = -1;
 }
 
-void keyboardInput(Ship &our, int i, int &space)
+void keyboardInput(Ship &our, int i, int &space,int &playerspeed)
 {
     changecurser(Point(our.position.x, our.position.y));
     if (!kbhit())
@@ -250,7 +250,7 @@ void keyboardInput(Ship &our, int i, int &space)
     {
         if (our.position.x > 0)
         {
-            our.position.x--;
+            our.position.x-=playerspeed;
         }
         break;
     }
@@ -259,7 +259,7 @@ void keyboardInput(Ship &our, int i, int &space)
     {
         if (our.position.x < boardSize.x)
         {
-            our.position.x++;
+            our.position.x+=playerspeed;
         }
         break;
     }
@@ -462,7 +462,7 @@ void enemyInit(Wave &invaders, int model)
         for (int j = 0; j < 8; j++)
         {
             invaders.NumberEachColumn[j] = i + 1;
-            invaders.enemy[i][j].timeToLaser = rand() % (time) + 0;
+            invaders.enemy[i][j].timeToLaser = (rand() % (time) + 0) * 2;
             invaders.enemy[i][j].hp = 10 * (model + (4 - i));
             invaders.enemy[i][j].exp = 10 * (model + (4 - i));
         }
@@ -533,7 +533,7 @@ void printWave(Wave &enemy, bool show, int &leftest)
 {
     for (int i = 0; i < 4; i++)
     {
-        changecurser(Point(enemy.pos.x , enemy.pos.y + i));
+        changecurser(Point(enemy.pos.x, enemy.pos.y + i));
         for (int j = 0; j < 8; j++)
         {
             if (show)
@@ -548,4 +548,3 @@ void printWave(Wave &enemy, bool show, int &leftest)
         }
     }
 }
-    
