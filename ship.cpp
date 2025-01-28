@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <chrono>
 #include <thread>
+#include <iomanip>
 
 using namespace std;
 
@@ -115,15 +116,28 @@ struct Wave
 void filllasers(int *laser);
 
 void changecurser(Point position);
-void mainGame();
-bool endgame();
-void keyboardInput(Ship &our, int i, int &space,int &playerspeed);
+void mainGame(int &resultExp);
+bool endgame(int &health);
+void keyboardInput(Ship &our, int i, int &space, int &playerspeed);
+
+// stats
+void printStats(int &exp, int &time, int &health);
+
 // lasers
 void newPlaceForLasers(Laser *&lasers, int &laserCount);
-void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy);
+void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy, Wave &inv, int &exp);
 void createNewLaser(Laser *&lasers, int &laserIndex, int &maxCount, Laser create, int *laserPos);
 void lasersClosion(Laser *&enemy, Laser *&playerSide, int *&enemyRow, int *&playerRow);
 void showlasers(Laser &lasers, bool firsttime);
+void colisionships(Laser *&playerlasesr, int *&playerRow, Wave &inv, int &exp);
+void colisionships(Laser *&enemylasesr, int *&enemyRow, Ship &our);
+void colisionships(Laser &playerlasesr, Wave &inv, int &exp);
+// void colisionobsticle(Laser *&enemylasesr, int *&enemyRow);
+
+//
+// red ship
+void redShipInit(Invader &redShip, Point &pos);
+void moveRedShip(Invader &redShip, Point &pos);
 
 // to do: create enemy ships from the plan & add the red ship from amirhossein
 // enemy
@@ -139,7 +153,8 @@ Point boardSize = Point(60, 40);
 
 int main()
 {
-    mainGame();
+    int playerExp = 0;
+    mainGame(playerExp);
     // cout << getch();
     SetConsoleOutputCP(CP_UTF8);
 
@@ -158,12 +173,23 @@ void changecurser(Point position)
     SetConsoleCursorPosition(hOutput, screen);
 }
 
-void mainGame()
+void mainGame(int &resultExp)
 {
-    system("cls");
+
     Stopwatch sw;
     Ship our;
     Wave enemy;
+
+    // redship
+    Invader redShip;
+    Point redShipPos;
+    int framesForRedShip = 72;
+
+    // stats for game (exp , time , health)
+    int exp = 0;
+    int time = 0;
+    our.health = 50;
+    int health = our.health;
 
     our.position = Point(boardSize.x / 2, boardSize.y);
     int enemylaserscount = 0, playerlaserscount = 0, eli = 1, pli = 1;
@@ -181,24 +207,47 @@ void mainGame()
     Laser *enemylasers = new Laser[eli];
 
     // player powers
-    int cycle = 1, playerlaserpower = 10, playerlaserspeed = -1, playerspeed = 2;
+    int cycle = 1, playerlaserpower = 50, playerlaserspeed = -1, playerspeed = 6;
 
     while (true)
     {
+        system("cls");
         sw.start();
-        if (endgame())
+        if (endgame(health))
         {
+            resultExp = exp;
             return;
         }
 
         keyboardInput(our, cycle, space, playerspeed);
 
         // todo:  print , exp , health bar , time ...
+        time = countFrame / 4;
+        health = our.health;
+        printStats(exp, time, health);
+        cout << enemylaserscount;
+        // end of stats
 
+        // redship
+        if (countFrame % framesForRedShip == 30)
+        {
+            redShipInit(redShip, redShipPos);
+        }
+        moveRedShip(redShip, redShipPos);
+        // end of red ship
+
+        // lasers
         checkForFireLasers(enemy, countFrame % 30, enemylasers, enemylaserscount, eli, enemyLaserlane);
+        // laser colision
         lasersClosion(enemylasers, playerlasers, enemyLaserlane, playerLaserlane);
-        moveLasers(playerlasers, playerlaserscount, playerLaserlane, false); // mvoe lasers each frame
-        moveLasers(enemylasers, enemylaserscount, enemyLaserlane, true);
+        colisionships(playerlasers, playerLaserlane, enemy, exp);
+        colisionships(enemylasers, enemyLaserlane, our);
+        // end laser colision
+        moveLasers(playerlasers, playerlaserscount, playerLaserlane, false, enemy, exp); // mvoe lasers each frame
+        moveLasers(enemylasers, enemylaserscount, enemyLaserlane, true, enemy, exp);
+        // endof lasers
+
+        // enemy wave
         moveWave(enemy);
         if (space >= 1) // if space clicked in the func -> create new laser for player
         {
@@ -210,7 +259,7 @@ void mainGame()
             // createNewLaser(playerlasers, playerlaserscount, pli, Laser(Point(our.position.x, our.position.y - 1), playerlaserspeed, playerlaserpower), playerLaserlane);
             space = false;
         }
-        // lasersClosion(enemylasers, playerlasers, enemyLaserlane, playerLaserlane); // lasres colision each frame from the last lasers on each culomn
+        // end of enemy wave
 
         // after all the process stops the timer
         sw.stop();
@@ -233,15 +282,16 @@ void filllasers(int *laser)
         laser[i] = -1;
 }
 
-void keyboardInput(Ship &our, int i, int &space,int &playerspeed)
+void keyboardInput(Ship &our, int i, int &space, int &playerspeed)
 {
     changecurser(Point(our.position.x, our.position.y));
+    // print ship
+
+    cout << "a";
     if (!kbhit())
         return;
 
     char input = getch();
-
-    cout << " ";
 
     switch (input)
     {
@@ -250,7 +300,7 @@ void keyboardInput(Ship &our, int i, int &space,int &playerspeed)
     {
         if (our.position.x > 0)
         {
-            our.position.x-=playerspeed;
+            our.position.x -= playerspeed;
         }
         break;
     }
@@ -259,7 +309,7 @@ void keyboardInput(Ship &our, int i, int &space,int &playerspeed)
     {
         if (our.position.x < boardSize.x)
         {
-            our.position.x+=playerspeed;
+            our.position.x += playerspeed;
         }
         break;
     }
@@ -282,14 +332,21 @@ void keyboardInput(Ship &our, int i, int &space,int &playerspeed)
     }
     // changecurser(Point(0, 0));
     // cout << i;
-    changecurser(Point(our.position.x, our.position.y));
-    // print ship
-
-    cout << "a";
 }
-bool endgame()
+bool endgame(int &health)
 {
+    if (health == 0)
+        return true;
     return false;
+}
+
+// stats
+void printStats(int &exp, int &time, int &health)
+{
+    changecurser(Point(0, 0));
+    cout << " Exp: " << setw(7) << exp << "     ";
+    cout << " HP: " << setw(5) << health << "   ";
+    cout << "Time: " << setw(4) << time << "      ";
 }
 
 //
@@ -309,7 +366,7 @@ void newPlaceForLasers(Laser *&lasers, int &laserCount)
     newPlaceForLasers(lasers, laserCount);
     return;
 }
-void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy)
+void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy, Wave &inv, int &exp)
 {
     for (int i = 0; i < laserCount; i++)
     {
@@ -318,7 +375,8 @@ void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy)
             // showlasers(lasers[i], true);
             continue;
         }
-        showlasers(lasers[i], true);
+        if (lasers[laserPos[lasers[i].pos.x]].pos.y - lasers[i].pos.y > 6 && lasers[laserPos[lasers[i].pos.x]].pos.y - lasers[i].pos.y < 0)
+            colisionships(lasers[i], inv, exp);
         lasers[i].pos.y += lasers[i].speed;
 
         if (lasers[i].pos.y <= 0 || lasers[i].pos.y > boardSize.y)
@@ -415,7 +473,70 @@ void lasersClosion(Laser *&enemy, Laser *&playerSide, int *&enemyRow, int *&play
 void showlasers(Laser &lasers, bool firsttime)
 {
     changecurser(Point(lasers.pos.x, lasers.pos.y));
-    cout << (firsttime ? " " : "|");
+    cout << "|";
+}
+void colisionships(Laser *&playerlasesr, int *&playerRow, Wave &inv, int &exp)
+{
+    for (int i = 0; i < boardSize.x; i++)
+    {
+        if (playerRow[i] == -1)
+            continue;
+        int x = playerlasesr[playerRow[i]].pos.x;
+        int y = playerlasesr[playerRow[i]].pos.y;
+        if (y - inv.pos.y <= 3 && y - inv.pos.y >= 0)
+        {
+            if (x >= inv.pos.x && x <= inv.pos.x + 7)
+            {
+                if (inv.enemy[y - inv.pos.y][x - inv.pos.x].hp > 0)
+                {
+                    int damage = inv.enemy[y - inv.pos.y][x - inv.pos.x].hp;
+                    inv.enemy[y - inv.pos.y][x - inv.pos.x].hp -= playerlasesr[playerRow[i]].power;
+                    playerlasesr[playerRow[i]].power -= damage;
+                    if (playerlasesr[playerRow[i]].power <= 0)
+                    {
+                        playerlasesr[playerRow[i]].power = 0;
+                        playerRow[i] = -1;
+                    }
+                    if (inv.enemy[y - inv.pos.y][x - inv.pos.x].hp <= 0)
+                    {
+                        inv.enemy[y - inv.pos.y][x - inv.pos.x].hp = 0;
+                        exp += inv.enemy[y - inv.pos.y][x - inv.pos.x].exp;
+                    }
+                }
+            }
+        }
+    }
+}
+void colisionships(Laser *&enemylasesr, int *&enemyRow, Ship &our)
+{
+    for (int i = 0; i < boardSize.x; i++)
+    {
+        if (enemyRow[i] == -1)
+            continue;
+        int x = enemylasesr[enemyRow[i]].pos.x;
+        int y = enemylasesr[enemyRow[i]].pos.y;
+        if (x == our.position.x && y == our.position.y)
+        {
+            our.health -= enemylasesr[enemyRow[i]].power;
+        }
+    }
+}
+void colisionships(Laser &playerlasesr, Wave &inv, int &exp)
+{
+    int x = playerlasesr.pos.x;
+    int y = playerlasesr.pos.y;
+    if (x >= inv.pos.x && x >= inv.pos.x + 7)
+    {
+        if (inv.enemy[y - inv.pos.y][x - inv.pos.x].hp > 0)
+        {
+            inv.enemy[y - inv.pos.y][x - inv.pos.x].hp -= playerlasesr.power;
+            if (inv.enemy[y - inv.pos.y][x - inv.pos.x].hp <= 0)
+            {
+                inv.enemy[y - inv.pos.y][x - inv.pos.x].hp = 0;
+                exp += inv.enemy[y - inv.pos.y][x - inv.pos.x].exp;
+            }
+        }
+    }
 }
 
 //
@@ -448,6 +569,26 @@ void colorize(int input, bool resetcolor)
     }
 }
 
+// red ship
+void redShipInit(Invader &redShip, Point &pos)
+{
+    redShip.exp = 200;
+    redShip.hp = 1;
+    redShip.timeToLaser = 0;
+    pos = Point(0, 3);
+}
+void moveRedShip(Invader &redShip, Point &pos)
+{
+    if (redShip.hp != 0)
+    {
+        pos.x += (pos.x / 12) + 1;
+        if (pos.x >= boardSize.x)
+            return;
+        changecurser(pos);
+        cout << "M";
+    }
+}
+
 // enemy
 void enemyInit(Wave &invaders, int model)
 {
@@ -455,7 +596,7 @@ void enemyInit(Wave &invaders, int model)
     int time = 70 - (4 * model);
     Invader bot = Invader();
     invaders.version = model;
-    invaders.pos = Point(0, 0);
+    invaders.pos = Point(0, 4);
     invaders.speed = 1 + model;
     for (int i = 0; i < 4; i++)
     {
@@ -523,7 +664,7 @@ void checkForFireLasers(Wave &invaders, int framesCount, Laser *&lasers, int &la
         {
             if (invaders.enemy[i][j].timeToLaser == framesCount)
             {
-                Laser crate = Laser(Point(j + invaders.pos.x, i + invaders.pos.y + 1), (invaders.version + 1), (4 - i) * 10);
+                Laser crate = Laser(Point(j + invaders.pos.x, i + invaders.pos.y + 1), (invaders.version + 1), (invaders.version + 1) * 10);
                 createNewLaser(lasers, laserIndex, maxCount, crate, laserPos);
             }
         }
@@ -541,10 +682,6 @@ void printWave(Wave &enemy, bool show, int &leftest)
                 {
                     cout << "o";
                 }
-                else
-                    cout << " ";
-            else
-                cout << " ";
         }
     }
 }
