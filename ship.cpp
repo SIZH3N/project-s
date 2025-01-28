@@ -113,16 +113,22 @@ struct Wave
     Invader enemy[4][8];
 };
 
+//
+// main game
+// void
 void filllasers(int *laser);
 
+void borders();
 void changecurser(Point position);
-void mainGame(int &resultExp);
+void mainGame(int &resultExp, int difficulty);
 bool endgame(int &health);
 void keyboardInput(Ship &our, int i, int &space, int &playerspeed);
 
+//
 // stats
 void printStats(int &exp, int &time, int &health);
 
+//
 // lasers
 void newPlaceForLasers(Laser *&lasers, int &laserCount);
 void moveLasers(Laser *&lasers, int &laserCount, int *laserPos, bool enemy, Wave &inv, int &exp);
@@ -139,27 +145,59 @@ void colisionships(Laser &playerlasesr, Wave &inv, int &exp);
 void redShipInit(Invader &redShip, Point &pos);
 void moveRedShip(Invader &redShip, Point &pos);
 
-// to do: create enemy ships from the plan & add the red ship from amirhossein
+//
 // enemy
 void enemyInit(Wave &invaders, int model);
 void moveWave(Wave &invaders);
 void checkForFireLasers(Wave &invaders, int framesCount, Laser *&lasers, int &laserIndex, int &maxCount, int *laserPos);
 void printWave(Wave &enemy, bool show, int &leftest);
+// end of main game
+//
+
 // colorize
 void colorize(int input, bool resetcolor);
 
 const double frameTime = 0.25;
 Point boardSize = Point(60, 40);
+Point startoftable = Point(1, 3);
 
 int main()
 {
-    int playerExp = 0;
-    mainGame(playerExp);
-    // cout << getch();
     SetConsoleOutputCP(CP_UTF8);
+    int playerExp = 0, difficulty = 0;
+    mainGame(playerExp, difficulty);
+    // cout << getch();
 
     cout << '\u0021';
     return 0;
+}
+
+void borders()
+{
+    colorize(3, false);
+    for (int i = 1; i < boardSize.x + 2 * startoftable.x - 1; i++)
+    {
+        changecurser(Point(i, 0));
+        cout << "\u2505";
+        changecurser(Point(i, startoftable.y + boardSize.y + 2));
+        cout << "\u2505";
+    }
+    for (int i = 1; i < boardSize.y + startoftable.y + 2; i++)
+    {
+        changecurser(Point(0, i));
+        cout << "\u250B";
+        changecurser(Point(boardSize.x + 2 * startoftable.x - 1, i));
+        cout << "\u250B";
+    }
+    changecurser(Point(0, 0));
+    cout << "\u256D";
+    changecurser(Point(0, boardSize.y + startoftable.y + 2));
+    cout << "\u2570";
+    changecurser(Point(boardSize.x + 2 * startoftable.x - 1, boardSize.y + startoftable.y + 2));
+    cout << "\u256F";
+    changecurser(Point(boardSize.x + 2 * startoftable.x - 1, 0));
+    cout << "\u256E";
+    colorize(3, true);
 }
 
 void changecurser(Point position)
@@ -173,7 +211,7 @@ void changecurser(Point position)
     SetConsoleCursorPosition(hOutput, screen);
 }
 
-void mainGame(int &resultExp)
+void mainGame(int &resultExp, int difficulty)
 {
 
     Stopwatch sw;
@@ -186,12 +224,12 @@ void mainGame(int &resultExp)
     int framesForRedShip = 72;
 
     // stats for game (exp , time , health)
-    int exp = 0;
+    int exp = 0, expMultiplyer = 1.5; //       zarb bokon to xp
     int time = 0;
     our.health = 50;
     int health = our.health;
 
-    our.position = Point(boardSize.x / 2, boardSize.y);
+    our.position = Point((boardSize.x) / 2, (boardSize.y));
     int enemylaserscount = 0, playerlaserscount = 0, eli = 1, pli = 1;
     int enemyWaveModel = 0; // enemywave model
     int enemyLaserlast[boardSize.x];
@@ -212,6 +250,7 @@ void mainGame(int &resultExp)
     while (true)
     {
         system("cls");
+        borders();
         sw.start();
         if (endgame(health))
         {
@@ -225,7 +264,6 @@ void mainGame(int &resultExp)
         time = countFrame / 4;
         health = our.health;
         printStats(exp, time, health);
-        cout << enemylaserscount;
         // end of stats
 
         // redship
@@ -236,19 +274,23 @@ void mainGame(int &resultExp)
         moveRedShip(redShip, redShipPos);
         // end of red ship
 
+        //// to do: RED SHIP COLLISION
+
         // lasers
         checkForFireLasers(enemy, countFrame % 30, enemylasers, enemylaserscount, eli, enemyLaserlane);
-        // laser colision
+        moveLasers(playerlasers, playerlaserscount, playerLaserlane, false, enemy, exp); // mvoe lasers each frame
+        moveLasers(enemylasers, enemylaserscount, enemyLaserlane, true, enemy, exp);
+            //  laser colision
         lasersClosion(enemylasers, playerlasers, enemyLaserlane, playerLaserlane);
         colisionships(playerlasers, playerLaserlane, enemy, exp);
         colisionships(enemylasers, enemyLaserlane, our);
-        // end laser colision
-        moveLasers(playerlasers, playerlaserscount, playerLaserlane, false, enemy, exp); // mvoe lasers each frame
-        moveLasers(enemylasers, enemylaserscount, enemyLaserlane, true, enemy, exp);
+            //  end laser colision
         // endof lasers
 
         // enemy wave
         moveWave(enemy);
+        // end of enemy wave
+
         if (space >= 1) // if space clicked in the func -> create new laser for player
         {
             for (int i = -(space / 2); i <= space / 2; i++)
@@ -259,8 +301,6 @@ void mainGame(int &resultExp)
             // createNewLaser(playerlasers, playerlaserscount, pli, Laser(Point(our.position.x, our.position.y - 1), playerlaserspeed, playerlaserpower), playerLaserlane);
             space = false;
         }
-        // end of enemy wave
-
         // after all the process stops the timer
         sw.stop();
         if (sw.elapsedSeconds() < frameTime)
@@ -284,7 +324,7 @@ void filllasers(int *laser)
 
 void keyboardInput(Ship &our, int i, int &space, int &playerspeed)
 {
-    changecurser(Point(our.position.x, our.position.y));
+    changecurser(Point(our.position.x + startoftable.x, our.position.y + startoftable.y));
     // print ship
 
     cout << "a";
@@ -301,6 +341,8 @@ void keyboardInput(Ship &our, int i, int &space, int &playerspeed)
         if (our.position.x > 0)
         {
             our.position.x -= playerspeed;
+            if (our.position.x <= 0)
+                our.position.x = 0;
         }
         break;
     }
@@ -310,6 +352,8 @@ void keyboardInput(Ship &our, int i, int &space, int &playerspeed)
         if (our.position.x < boardSize.x)
         {
             our.position.x += playerspeed;
+            if (our.position.x >= boardSize.x)
+                our.position.x = boardSize.x - 1;
         }
         break;
     }
@@ -343,7 +387,7 @@ bool endgame(int &health)
 // stats
 void printStats(int &exp, int &time, int &health)
 {
-    changecurser(Point(0, 0));
+    changecurser(startoftable);
     cout << " Exp: " << setw(7) << exp << "     ";
     cout << " HP: " << setw(5) << health << "   ";
     cout << "Time: " << setw(4) << time << "      ";
@@ -472,7 +516,7 @@ void lasersClosion(Laser *&enemy, Laser *&playerSide, int *&enemyRow, int *&play
 }
 void showlasers(Laser &lasers, bool firsttime)
 {
-    changecurser(Point(lasers.pos.x, lasers.pos.y));
+    changecurser(Point(lasers.pos.x + startoftable.x, lasers.pos.y + startoftable.y));
     cout << "|";
 }
 void colisionships(Laser *&playerlasesr, int *&playerRow, Wave &inv, int &exp)
@@ -553,13 +597,28 @@ void colorize(int input, bool resetcolor)
     {
     case 1:
     {
-        SetConsoleTextAttribute(h, 7);
+        SetConsoleTextAttribute(h, 7); // defult
 
         break;
     }
     case 2:
     {
-        SetConsoleTextAttribute(h, 9);
+        SetConsoleTextAttribute(h, 9); // blue
+        break;
+    }
+    case 3:
+    {
+        SetConsoleTextAttribute(h, 10); // green
+        break;
+    }
+    case 4:
+    {
+        SetConsoleTextAttribute(h, 4); // red
+        break;
+    }
+    case 5:
+    {
+        SetConsoleTextAttribute(h, 64); // red back fron black
         break;
     }
     default:
@@ -575,7 +634,7 @@ void redShipInit(Invader &redShip, Point &pos)
     redShip.exp = 200;
     redShip.hp = 1;
     redShip.timeToLaser = 0;
-    pos = Point(0, 3);
+    pos = Point(0, 2);
 }
 void moveRedShip(Invader &redShip, Point &pos)
 {
@@ -584,8 +643,10 @@ void moveRedShip(Invader &redShip, Point &pos)
         pos.x += (pos.x / 12) + 1;
         if (pos.x >= boardSize.x)
             return;
-        changecurser(pos);
+        changecurser(Point(pos.x + startoftable.x, pos.y + startoftable.y));
+        colorize(5, false);
         cout << "M";
+        colorize(5, true);
     }
 }
 
@@ -596,7 +657,7 @@ void enemyInit(Wave &invaders, int model)
     int time = 70 - (4 * model);
     Invader bot = Invader();
     invaders.version = model;
-    invaders.pos = Point(0, 4);
+    invaders.pos = Point(0, 3);
     invaders.speed = 1 + model;
     for (int i = 0; i < 4; i++)
     {
@@ -630,15 +691,14 @@ void moveWave(Wave &invaders)
     //     cout << invaders.NumberEachColumn[i] << "  ";
     // }
     // exit(1);
-    printWave(invaders, false, leftest);
-
+    printWave(invaders, true, leftest);
     if (invaders.speed > 0)
     {
         if (invaders.pos.x + leftest + invaders.speed < boardSize.x) // if there is a space between each enemy space in every line this line should change
             invaders.pos.x += invaders.speed;
         else
         {
-            invaders.pos.x = boardSize.x - leftest;
+            invaders.pos.x = boardSize.x - leftest - 1;
             invaders.speed *= -1;
             invaders.pos.y++;
         }
@@ -654,7 +714,6 @@ void moveWave(Wave &invaders)
             invaders.pos.y++;
         }
     }
-    printWave(invaders, true, leftest);
 }
 void checkForFireLasers(Wave &invaders, int framesCount, Laser *&lasers, int &laserIndex, int &maxCount, int *laserPos)
 {
@@ -674,13 +733,17 @@ void printWave(Wave &enemy, bool show, int &leftest)
 {
     for (int i = 0; i < 4; i++)
     {
-        changecurser(Point(enemy.pos.x, enemy.pos.y + i));
+        changecurser(Point(enemy.pos.x + startoftable.x, enemy.pos.y + i + startoftable.y));
         for (int j = 0; j < 8; j++)
         {
             if (show)
                 if (enemy.enemy[i][j].hp != 0)
                 {
                     cout << "o";
+                }
+                else
+                {
+                    cout << " ";
                 }
         }
     }
