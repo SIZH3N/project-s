@@ -271,9 +271,10 @@ void keyboardInput(Ship &our, int i, int &space)
         space = 1;
         break;
     }
+    case 'W':
     case 'w':
     {
-        space = 3;
+        space = 7;
         break;
     }
     default:
@@ -483,11 +484,11 @@ void moveWave(Wave &invaders)
         else
             dontcheckright = true;
     }
-    for(int i=0;i<8;i++)
-    {
-        cout << invaders.NumberEachColumn[i] << "  ";
-    }
-    exit(1);
+    // for(int i=0;i<8;i++)
+    // {
+    //     cout << invaders.NumberEachColumn[i] << "  ";
+    // }
+    // exit(1);
     printWave(invaders, false, leftest);
 
     if (invaders.speed > 0)
@@ -532,7 +533,7 @@ void printWave(Wave &enemy, bool show, int &leftest)
 {
     for (int i = 0; i < 4; i++)
     {
-        changecurser(Point(enemy.pos.x + leftest, enemy.pos.y + i));
+        changecurser(Point(enemy.pos.x , enemy.pos.y + i));
         for (int j = 0; j < 8; j++)
         {
             if (show)
@@ -547,3 +548,4 @@ void printWave(Wave &enemy, bool show, int &leftest)
         }
     }
 }
+    
