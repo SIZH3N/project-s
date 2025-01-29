@@ -1,0 +1,3 @@
+ali 0 0
+mo 0 1
+mamad 0 2

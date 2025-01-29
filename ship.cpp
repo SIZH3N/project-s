@@ -4,6 +4,8 @@
 #include <chrono>
 #include <thread>
 #include <iomanip>
+#include <fstream>
+#include <string>
 
 using namespace std;
 
@@ -45,6 +47,13 @@ private:
     chrono::time_point<chrono::high_resolution_clock> start_time;
     chrono::time_point<chrono::high_resolution_clock> end_time;
     bool running = false;
+};
+
+struct Player
+{
+    string name;
+    int score;
+    int gameDataId;
 };
 
 struct Point
@@ -113,6 +122,27 @@ struct Wave
     Invader enemy[4][8];
 };
 
+struct Playerdata
+{
+    int difficulty;
+    Wave doshman;
+    Ship our;
+};
+//
+// first menu
+// main menu
+void enterData();
+void addData(Player player);
+void reportData();
+
+void loadData();
+void saveData();
+
+void showSaves();
+void howTOPlay();
+
+void mainMenu();
+
 //
 // main game
 // void
@@ -120,7 +150,7 @@ void filllasers(int *laser);
 
 void borders();
 void changecurser(Point position);
-void mainGame(int &resultExp, int difficulty);
+void mainGame(int &resultExp, int firstTime, int difficulty = 1);
 bool endgame(int &health);
 void keyboardInput(Ship &our, int i, int &space, int &playerspeed);
 
@@ -157,6 +187,14 @@ void printWave(Wave &enemy, bool show, int &leftest);
 // colorize
 void colorize(int input, bool resetcolor);
 
+//
+// main menu glabals
+Player players[200];
+Playerdata shouldsave[200];
+int currentPlayer = 0;
+
+//
+// main game globals
 const double frameTime = 0.25;
 Point boardSize = Point(60, 40);
 Point startoftable = Point(1, 3);
@@ -164,12 +202,209 @@ Point startoftable = Point(1, 3);
 int main()
 {
     SetConsoleOutputCP(CP_UTF8);
-    int playerExp = 0, difficulty = 0;
-    mainGame(playerExp, difficulty);
-    // cout << getch();
+    mainMenu();
 
     cout << '\u0021';
     return 0;
+}
+
+//
+// first menu
+// main menu
+void enterData()
+{
+    system("cls");
+    Player player;
+    cout << "Enter your Name : ";
+    cin >> player.name;
+    player.score = 0;
+    player.gameDataId = currentPlayer;
+    addData(player);
+
+    cout << "Enter Any key To Continue : ";
+    getch();
+
+    int exp = 0;
+    mainGame(exp, -1);
+    // start the game no data
+}
+void addData(Player player)
+{
+    players[currentPlayer] = player;
+    currentPlayer++;
+    saveData();
+}
+void bubbleSortDescending(Player arr[])
+{
+    int n = currentPlayer;
+    for (int i = 0; i < n - 1; i++)
+    {
+        for (int j = 0; j < n - i - 1; j++)
+        {
+            if (arr[j].score < arr[j + 1].score)
+            {
+                Player temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+        }
+    }
+}
+void reportData()
+{
+    system("cls");
+    cout << "----------------------------" << endl
+         << "------- Leader Board -------" << endl
+         << "----------------------------" << endl;
+    for (int i = 0; i < currentPlayer; i++)
+    {
+        Player player = players[i];
+        cout << (i + 1) << "    Name : " << setw(10) << player.name << "     || Score : " << setw(5) << player.score << endl;
+    }
+
+    cout << " Enter Any key To Continue : ";
+    getch();
+}
+
+void loadData()
+{
+    ifstream file("data.txt");
+    if (file.is_open())
+    {
+        currentPlayer = 0;
+        Player player;
+        while (file >> player.name && file >> player.score && file >> player.gameDataId)
+        {
+
+            players[currentPlayer].name = player.name;
+            players[currentPlayer].gameDataId = player.gameDataId;
+            players[currentPlayer].score = player.score;
+
+            currentPlayer++;
+        }
+    }
+    ifstream data("playerdata.txt");
+    if (file.is_open())
+    {
+        int currentPlayer1 = 0;
+
+        Playerdata playerd;
+        while (file >> playerd.difficulty)
+        {
+            if (playerd.difficulty != -1)
+            {
+                file >> playerd.doshman.pos.x;
+                file >> playerd.doshman.pos.y;
+                file >> playerd.doshman.speed;
+                file >> playerd.doshman.version;
+                for (int i = 0; i < 8; i++)
+                    file >> playerd.doshman.NumberEachColumn[i];
+                for (int i = 0; i < 4; i++)
+                {
+                    for (int j = 0; j < 8; j++)
+                    {
+                        file >> playerd.doshman.enemy[i][j].exp;
+                        file >> playerd.doshman.enemy[i][j].hp;
+                        file >> playerd.doshman.enemy[i][j].timeToLaser;
+                    }
+                }
+                file >> playerd.our.health;
+                file >> playerd.our.position.x;
+                file >> playerd.our.position.y;
+                shouldsave[currentPlayer1] = playerd;
+                currentPlayer1++;
+            }
+            else
+            {
+                shouldsave[currentPlayer1].difficulty = playerd.difficulty;
+                currentPlayer1++;
+            }
+        }
+    }
+}
+
+void saveData()
+{
+    ofstream file("data.txt", ios::out);
+
+    if (file.is_open())
+    {
+        for (int i = 0; i < currentPlayer; i++)
+        {
+            file << players[i].name << " " << players[i].score << " " << players[i].gameDataId << "\n";
+        }
+    }
+}
+void showSaves()
+{
+    int input, exp = 0;
+    while (true)
+    {
+        system("cls");
+        cout << endl
+             << "------- Load Game -------" << endl
+             << "Enter your number: " << endl;
+        for (int i = 0; i < currentPlayer; i++)
+        {
+            Player player = players[i];
+            cout << (i + 1) << "    Name :  " << player.name << endl;
+        }
+        changecurser(Point(23, 2));
+
+        cin >> input;
+        if (input <= currentPlayer && input > 0)
+            break;
+    }
+    mainGame(exp, players[input - 1].gameDataId);
+}
+void howTOPlay()
+{
+    system("cls");
+    cout << endl
+         << "------- How To Play -------\n"
+         << endl
+         << "Press \'A\' and \'D\' to move and \'space\' to shoot lasers. \nAlso, \'W\' is your special ability you can unlock. " << endl;
+
+    cout << "Enter Any key To Continue : ";
+    getch();
+}
+
+void mainMenu()
+{
+    loadData();
+
+    while (true)
+    {
+        system("cls");
+        cout << "------ Menu ----- " << endl;
+        cout << "1-  New Game" << endl;
+        cout << "2-  Load Game" << endl;
+        cout << "3-  How to play" << endl;
+        cout << "4-  Leaderboard" << endl;
+        cout << "5-  Exit";
+        char in = getch();
+
+        switch (in)
+        {
+        case '1':
+            enterData();
+            break;
+        case '2':
+            showSaves();
+            break;
+        case '3':
+            howTOPlay();
+            break;
+        case '4':
+            reportData();
+            break;
+        case '5':
+            exit(1);
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 void borders()
@@ -211,7 +446,7 @@ void changecurser(Point position)
     SetConsoleCursorPosition(hOutput, screen);
 }
 
-void mainGame(int &resultExp, int difficulty)
+void mainGame(int &resultExp, int firstTime, int difficulty)
 {
 
     Stopwatch sw;
@@ -224,7 +459,7 @@ void mainGame(int &resultExp, int difficulty)
     int framesForRedShip = 72;
 
     // stats for game (exp , time , health)
-    int exp = 0, expMultiplyer = 1.5; //       zarb bokon to xp
+    int exp = 0, expMultiplyer = difficulty; //       zarb bokon to xp
     int time = 0;
     our.health = 50;
     int health = our.health;
@@ -239,13 +474,36 @@ void mainGame(int &resultExp, int difficulty)
     int countFrame = 0;
 
     enemyInit(enemy, enemyWaveModel);
+    if (firstTime != -1)
+    {
+        difficulty = shouldsave[firstTime].difficulty;
+        enemy.pos.x = shouldsave[firstTime].doshman.pos.x;
+        enemy.pos.y = shouldsave[firstTime].doshman.pos.y;
+        enemy.speed = shouldsave[firstTime].doshman.speed;
+        enemy.version = shouldsave[firstTime].doshman.version;
+        for (int i = 0; i < 8; i++)
+            enemy.NumberEachColumn[i] = shouldsave[firstTime].doshman.NumberEachColumn[i];
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                enemy.enemy[i][j].exp = shouldsave[firstTime].doshman.enemy[i][j].exp;
+                enemy.enemy[i][j].hp = shouldsave[firstTime].doshman.enemy[i][j].hp;
+                enemy.enemy[i][j].timeToLaser = shouldsave[firstTime].doshman.enemy[i][j].timeToLaser;
+            }
+        }
+        our.health = shouldsave[firstTime].our.health;
+        our.position.x = shouldsave[firstTime].our.position.x;
+        our.position.y = shouldsave[firstTime].our.position.y;
+    }
+
     filllasers(enemyLaserlane);
     filllasers(playerLaserlane);
     Laser *playerlasers = new Laser[pli];
     Laser *enemylasers = new Laser[eli];
 
     // player powers
-    int cycle = 1, playerlaserpower = 50, playerlaserspeed = -1, playerspeed = 6;
+    int cycle = 1, playerlaserpower = 30, playerlaserspeed = -1, playerspeed = 1;
 
     while (true)
     {
@@ -254,6 +512,7 @@ void mainGame(int &resultExp, int difficulty)
         sw.start();
         if (endgame(health))
         {
+
             resultExp = exp;
             return;
         }
@@ -277,14 +536,14 @@ void mainGame(int &resultExp, int difficulty)
         //// to do: RED SHIP COLLISION
 
         // lasers
-        checkForFireLasers(enemy, countFrame % 30, enemylasers, enemylaserscount, eli, enemyLaserlane);
+        checkForFireLasers(enemy, countFrame % 72, enemylasers, enemylaserscount, eli, enemyLaserlane);
         moveLasers(playerlasers, playerlaserscount, playerLaserlane, false, enemy, exp); // mvoe lasers each frame
         moveLasers(enemylasers, enemylaserscount, enemyLaserlane, true, enemy, exp);
-            //  laser colision
+        //  laser colision
         lasersClosion(enemylasers, playerlasers, enemyLaserlane, playerLaserlane);
         colisionships(playerlasers, playerLaserlane, enemy, exp);
         colisionships(enemylasers, enemyLaserlane, our);
-            //  end laser colision
+        //  end laser colision
         // endof lasers
 
         // enemy wave
@@ -388,7 +647,7 @@ bool endgame(int &health)
 void printStats(int &exp, int &time, int &health)
 {
     changecurser(startoftable);
-    cout << " Exp: " << setw(7) << exp << "     ";
+    cout << " Xp: " << setw(7) << exp << "     ";
     cout << " HP: " << setw(5) << health << "   ";
     cout << "Time: " << setw(4) << time << "      ";
 }
@@ -721,7 +980,7 @@ void checkForFireLasers(Wave &invaders, int framesCount, Laser *&lasers, int &la
     {
         for (int j = 0; j < 8; j++)
         {
-            if (invaders.enemy[i][j].timeToLaser == framesCount)
+            if (invaders.enemy[i][j].timeToLaser == framesCount && invaders.enemy[i][j].hp != 0)
             {
                 Laser crate = Laser(Point(j + invaders.pos.x, i + invaders.pos.y + 1), (invaders.version + 1), (invaders.version + 1) * 10);
                 createNewLaser(lasers, laserIndex, maxCount, crate, laserPos);
@@ -733,17 +992,18 @@ void printWave(Wave &enemy, bool show, int &leftest)
 {
     for (int i = 0; i < 4; i++)
     {
-        changecurser(Point(enemy.pos.x + startoftable.x, enemy.pos.y + i + startoftable.y));
+        // changecurser(Point(enemy.pos.x + startoftable.x, enemy.pos.y + i + startoftable.y));
         for (int j = 0; j < 8; j++)
         {
             if (show)
                 if (enemy.enemy[i][j].hp != 0)
                 {
+                    changecurser(Point(enemy.pos.x + startoftable.x + j, enemy.pos.y + i + startoftable.y));
                     cout << "o";
                 }
                 else
                 {
-                    cout << " ";
+                    // cout << " ";
                 }
         }
     }
